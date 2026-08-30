@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Web con Supabase y Anuncios</title>
-    <!-- 1. Importar la librería de Supabase -->
-    <script src="https://jsdelivr.net"></script>
+    
+    <!-- 1. CORREGIDO: Importar correctamente la librería de Supabase desde un CDN válido -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- AQUÍ PEGARÁS TU CÓDIGO DE GOOGLE ADSENSE EN EL FUTURO -->
 </head>
@@ -29,15 +30,15 @@
     </div>
 
     <script>
-        // 2. Configurar las credenciales de Supabase
-        // (Las encuentras en Supabase > Project Settings > API)
-        const SUPABASE_URL = "https://ejvtkxexhmslgktdugum.supabase.co/rest/v1/";
+        // 2. CORREGIDO: La URL de Supabase NO debe llevar "/rest/v1/" al final
+        const SUPABASE_URL = "https://ejvtkxexhmslgktdugum.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_-_GvErnsf8F-sP1oik0pKA_Qum5SfKx";
 
-        const supabase = @supabase/supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // 3. CORREGIDO: Se elimina el símbolo "@" y se usa supabase.createClient correctamente
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let usuarioActual = null;
 
-        // 3. Comprobar si el usuario ya está logueado al cargar la página
+        // 4. Comprobar si el usuario ya está logueado al cargar la página
         supabase.auth.onAuthStateChange((event, session) => {
             if (session) {
                 usuarioActual = session.user;
@@ -55,12 +56,11 @@
             }
         });
 
-        // 4. Funciones de Autenticación
+        // 5. Funciones de Autenticación
         async function iniciarSesion() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'github',
                 options: {
-                    // Reemplaza esto por la URL final de tu web cuando la subas a GitHub/Cloudflare
                     redirectTo: window.location.origin 
                 }
             });
@@ -71,7 +71,7 @@
             await supabase.auth.signOut();
         }
 
-        // 5. Guardar datos del usuario en la base de datos
+        // 6. Guardar datos del usuario en la base de datos
         async function guardarDatos() {
             const texto = document.getElementById('input-datos').value;
             
@@ -88,7 +88,7 @@
             }
         }
 
-        // 6. Cargar datos del usuario desde la base de datos
+        // 7. Cargar datos del usuario desde la base de datos
         async function cargarDatos() {
             const { data, error } = await supabase
                 .from('datos_usuarios')
