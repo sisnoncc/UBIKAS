@@ -3,26 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Web con Supabase y Anuncios</title>
+    <title>Mi Web con Supabase y Código de Acceso</title>
     
-    <!-- 1. Importar la librería de Supabase desde un CDN válido -->
+    <!-- 1. Importar la librería de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- AQUÍ PEGARÁS TU CÓDIGO DE GOOGLE ADSENSE EN EL FUTURO -->
 </head>
 <body>
 
     <h1>Mi Aplicación Diaria</h1>
     
-    <!-- Controles de Usuario -->
+    <!-- SECCIÓN DE AUTENTICACIÓN (Paso 1 y 2) -->
     <div id="auth-section">
-        <button id="btn-login" onclick="iniciarSesion()">Iniciar Sesión con GitHub</button>
-        <button id="btn-logout" onclick="cerrarSesion()" style="display:none;">Cerrar Sesión</button>
-        <p id="user-email"></p>
+        <div id="step-email">
+            <h3>Iniciar Sesión / Registro</h3>
+            <p>Introduce tu correo electrónico para recibir un código de acceso:</p>
+            <input type="email" id="input-email" placeholder="tu@correo.com" style="padding: 5px; width: 250px;">
+            <br><br>
+            <button onclick="enviarCodigo()">Enviar Código</button>
+        </div>
+
+        <div id="step-otp" style="display:none;">
+            <h3>Verificar Código</h3>
+            <p>Introduce el código de 6 dígitos que hemos enviado a tu correo:</p>
+            <input type="text" id="input-otp" placeholder="123456" style="padding: 5px; width: 150px;">
+            <br><br>
+            <button onclick="verificarCodigo()">Confirmar Código</button>
+        </div>
+
+        <button id="btn-logout" onclick="cerrarSesion()" style="display:none; margin-top: 10px;">Cerrar Sesión</button>
+        <p id="user-email" style="font-weight: bold; color: green;"></p>
     </div>
 
-    <!-- App / Guardar Datos -->
-    <div id="app-section" style="display:none;">
+    <!-- APLICACIÓN PRINCIPAL (Visible solo cuando está logueado) -->
+    <div id="app-section" style="display:none; margin-top: 20px;">
         <h3>Tus Datos Guardados en la Nube:</h3>
         <textarea id="input-datos" rows="4" cols="50" placeholder="Escribe algo aquí para guardarlo..."></textarea>
         <br><br>
@@ -34,48 +47,86 @@
         const SUPABASE_URL = "https://ejvtkxexhmslgktdugum.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_-_GvErnsf8F-sP1oik0pKA_Qum5SfKx";
 
-        // 3. Inicialización usando directamente el objeto global sin redeclarar
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let usuarioActual = null;
+        let correoPendiente = "";
 
-        // 4. Comprobar el estado de autenticación
-        db.auth.onAuthStateChange((event, session) => {
+        // 3. Comprobar si ya hay una sesión activa al cargar la web
+        db.auth.getSession().then(({ data: { session } }) => {
             if (session) {
-                usuarioActual = session.user;
-                document.getElementById('btn-login').style.display = 'none';
-                document.getElementById('btn-logout').style.display = 'inline';
-                document.getElementById('user-email').innerText = `Conectado como: ${usuarioActual.email}`;
-                document.getElementById('app-section').style.display = 'block';
-                cargarDatos();
-            } else {
-                usuarioActual = null;
-                document.getElementById('btn-login').style.display = 'inline';
-                document.getElementById('btn-logout').style.display = 'none';
-                document.getElementById('user-email').innerText = '';
-                document.getElementById('app-section').style.display = 'none';
+                gestionarSesionActiva(session.user);
             }
         });
 
-        // 5. Funciones de Autenticación
-        async function iniciarSesion() {
-            const { error } = await db.auth.signInWithOAuth({
-                provider: 'github',
+        // 4. Paso 1: Enviar código OTP al correo
+        async function enviarCodigo() {
+            correoPendiente = document.getElementById('input-email').value.trim();
+            if (!correoPendiente) {
+                alert("Por favor, introduce un correo válido.");
+                return;
+            }
+
+            const { error } = await db.auth.signInWithOtp({
+                email: correoPendiente,
                 options: {
-                    redirectTo: window.location.origin 
+                    shouldCreateUser: true // Crea el usuario si es nuevo, o lo loguea si ya existe
                 }
             });
-            if (error) console.error("Error al iniciar sesión:", error.message);
+
+            if (error) {
+                alert("Error al enviar el código: " + error.message);
+            } else {
+                alert("¡Código enviado! Revisa tu bandeja de entrada (y spam).");
+                // Ocultar campo de email y mostrar campo para introducir el código
+                document.getElementById('step-email').style.display = 'none';
+                document.getElementById('step-otp').style.display = 'block';
+            }
+        }
+
+        // 5. Paso 2: Verificar el código que escribió el usuario
+        async function verificarCodigo() {
+            const tokenCodigo = document.getElementById('input-otp').value.trim();
+            if (!tokenCodigo) {
+                alert("Introduce el código de verificación.");
+                return;
+            }
+
+            const { data, error } = await db.auth.verifyOtp({
+                email: correoPendiente,
+                token: tokenCodigo,
+                type: 'email'
+            });
+
+            if (error) {
+                alert("Código incorrecto o expirado: " + error.message);
+            } else {
+                alert("¡Inicio de sesión exitoso!");
+                gestionarSesionActiva(data.user);
+            }
+        }
+
+        // Interfaz cuando el usuario está conectado
+        function gestionarSesionActiva(user) {
+            usuarioActual = user;
+            document.getElementById('auth-section').style.display = 'block';
+            document.getElementById('step-email').style.display = 'none';
+            document.getElementById('step-otp').style.display = 'none';
+            document.getElementById('btn-logout').style.display = 'inline';
+            document.getElementById('user-email').innerText = `Conectado como: ${user.email}`;
+            document.getElementById('app-section').style.display = 'block';
+            cargarDatos();
         }
 
         async function cerrarSesion() {
             await db.auth.signOut();
+            window.location.reload(); // Recarga la página para limpiar estados
         }
 
-        // 6. Guardar datos en la base de datos
+        // 6. Guardar datos en la base de datos de Supabase
         async function guardarDatos() {
             const texto = document.getElementById('input-datos').value;
             
-            const { data, error } = await db
+            const { error } = await db
                 .from('datos_usuarios')
                 .upsert([
                     { user_id: usuarioActual.id, contenido: texto }
