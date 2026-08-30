@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Web con Supabase y Anuncios</title>
+    <!-- 1. Importar la librería de Supabase -->
+    <script src="https://jsdelivr.net"></script>
+    
+    <!-- AQUÍ PEGARÁS TU CÓDIGO DE GOOGLE ADSENSE EN EL FUTURO -->
+</head>
+<body>
+
+    <h1>Mi Aplicación Diaria</h1>
+    
+    <!-- Controles de Usuario -->
+    <div id="auth-section">
+        <button id="btn-login" onclick="iniciarSesion()">Iniciar Sesión con GitHub</button>
+        <button id="btn-logout" onclick="cerrarSesion()" style="display:none;">Cerrar Sesión</button>
+        <p id="user-email"></p>
+    </div>
+
+    <!-- App / Guardar Datos -->
+    <div id="app-section" style="display:none;">
+        <h3>Tus Datos Guardados en la Nube:</h3>
+        <textarea id="input-datos" rows="4" cols="50" placeholder="Escribe algo aquí para guardarlo..."></textarea>
+        <br><br>
+        <button onclick="guardarDatos()">Guardar Datos</button>
+    </div>
+
+    <script>
+        // 2. Configurar las credenciales de Supabase
+        // (Las encuentras en Supabase > Project Settings > API)
+        const SUPABASE_URL = "https://ejvtkxexhmslgktdugum.supabase.co/rest/v1/";
+        const SUPABASE_ANON_KEY = "sb_publishable_-_GvErnsf8F-sP1oik0pKA_Qum5SfKx";
+
+        const supabase = @supabase/supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let usuarioActual = null;
+
+        // 3. Comprobar si el usuario ya está logueado al cargar la página
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                usuarioActual = session.user;
+                document.getElementById('btn-login').style.display = 'none';
+                document.getElementById('btn-logout').style.display = 'inline';
+                document.getElementById('user-email').innerText = `Conectado como: ${usuarioActual.email}`;
+                document.getElementById('app-section').style.display = 'block';
+                cargarDatos();
+            } else {
+                usuarioActual = null;
+                document.getElementById('btn-login').style.display = 'inline';
+                document.getElementById('btn-logout').style.display = 'none';
+                document.getElementById('user-email').innerText = '';
+                document.getElementById('app-section').style.display = 'none';
+            }
+        });
+
+        // 4. Funciones de Autenticación
+        async function iniciarSesion() {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'github',
+                options: {
+                    // Reemplaza esto por la URL final de tu web cuando la subas a GitHub/Cloudflare
+                    redirectTo: window.location.origin 
+                }
+            });
+            if (error) console.error("Error al iniciar sesión:", error.message);
+        }
+
+        async function cerrarSesion() {
+            await supabase.auth.signOut();
+        }
+
+        // 5. Guardar datos del usuario en la base de datos
+        async function guardarDatos() {
+            const texto = document.getElementById('input-datos').value;
+            
+            const { data, error } = await supabase
+                .from('datos_usuarios')
+                .upsert([
+                    { user_id: usuarioActual.id, contenido: texto }
+                ], { onConflict: 'user_id' }); // Sobrescribe si el usuario ya tiene un registro
+
+            if (error) {
+                alert("Error al guardar: " + error.message);
+            } else {
+                alert("¡Datos guardados con éxito en la nube!");
+            }
+        }
+
+        // 6. Cargar datos del usuario desde la base de datos
+        async function cargarDatos() {
+            const { data, error } = await supabase
+                .from('datos_usuarios')
+                .select('contenido')
+                .eq('user_id', usuarioActual.id)
+                .single();
+
+            if (data) {
+                document.getElementById('input-datos').value = data.contenido;
+            }
+        }
+    </script>
+</body>
+</html>
