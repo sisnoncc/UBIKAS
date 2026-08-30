@@ -1,0 +1,273 @@
+* {
+    box-sizing: border-box;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 15px 10px 40px 10px;
+    background-color: #f4f4f9;
+    color: #333;
+}
+h1 { 
+    font-size: 22px; 
+    margin: 10px 0 5px 0;
+}
+#info-dispositivo {
+    font-size: 11px; 
+    color: #666; 
+    margin-bottom: 15px;
+}
+
+/* Sección del Vídeo Explicativo */
+.video-container {
+    max-width: 500px;
+    margin: 0 auto 15px auto;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+.video-container video {
+    width: 100%;
+    height: auto;
+    display: block;
+    max-height: 250px;
+}
+
+/* Botón de instalación PWA */
+#btn-instalar-app {
+    display: none;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto 20px auto;
+    background: linear-gradient(135deg, #28a745, #218838);
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(40, 167, 69, 0.3);
+}
+#btn-instalar-app:active {
+    transform: scale(0.98);
+}
+
+.button-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 15px;
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 5px;
+}
+.item-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #fff;
+    padding: 10px 5px;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    cursor: grab;
+    touch-action: pan-y;
+}
+.item-group:active {
+    cursor: grabbing;
+}
+.item-group.no-sort {
+    cursor: default !important;
+}
+
+button {
+    width: 55px;
+    height: 55px;
+    font-size: 22px;
+    cursor: pointer;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 5px rgba(0,0,0,0.15);
+    user-select: none;
+    -webkit-user-select: none;
+    outline: none;
+}
+.label-text {
+    margin-top: 8px;
+    font-weight: 600;
+    color: #444;
+    width: 100%;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 15px;
+}
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 14px;
+    width: 100%;
+    max-width: 320px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    text-align: center;
+}
+.modal-content h3 {
+    margin-top: 0;
+    font-size: 18px;
+}
+.modal-content button {
+    width: 100%;
+    height: 44px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    margin-top: 10px;
+    color: white;
+}
+.btn-mod-ubicacion { background-color: #17a2b8; }
+.btn-mod-texto { background-color: #ffc107; color: #333 !important; font-weight: bold; }
+.btn-eliminar { background-color: #dc3545; }
+.btn-cancelar-modal { background-color: #6c757d; }
+
+.modal-content label {
+    display: block;
+    text-align: left;
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    margin-top: 12px;
+    margin-bottom: 4px;
+}
+.modal-content input {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    outline: none;
+}
+.input-error {
+    border: 2px solid #dc3545 !important;
+    background-color: #fff8f8 !important;
+}
+.btn-guardar {
+    width: 100%;
+    height: 44px;
+    border-radius: 6px;
+    font-size: 15px;
+    background-color: #28a745;
+    color: white;
+    cursor: pointer;
+    border: none;
+    margin-top: 15px;
+}
+.btn-cerrar-config { background-color: #6c757d !important; margin-top: 6px !important; }
+
+#contenedor-mapa-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 2000;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+.map-box {
+    position: relative;
+    width: 100%;
+    height: 92vh;
+    background: white;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.map-header {
+    background: #222;
+    color: white;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.map-header span { font-weight: bold; font-size: 11px; }
+.btn-cerrar-mapa {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: auto !important; 
+    height: auto !important; 
+    font-size: 13px;
+}
+#map {
+    width: 100%;
+    flex-grow: 1;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.leaflet-control-geocoder {
+    width: 92% !important;
+    max-width: 400px !important;
+    margin: 10px auto !important;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2) !important;
+    border-radius: 8px !important;
+    background: white !important;
+}
+.leaflet-control-geocoder-form input {
+    width: 100% !important;
+    font-size: 14px !important;
+    padding: 10px !important;
+    border: none !important;
+    outline: none !important;
+    border-radius: 8px !important;
+}
+.leaflet-control-geocoder-alternatives {
+    width: 100% !important;
+    max-height: 160px !important;
+    overflow-y: auto !important;
+    background: white !important;
+}
+.leaflet-control-geocoder-alternatives li {
+    padding: 10px !important;
+    text-align: left !important;
+    font-size: 13px !important;
+    color: #333 !important;
+    border-bottom: 1px solid #f0f0f0;
+}
+.leaflet-bar a.btn-geolocalizacion {
+    background-color: #fff;
+    color: #222;
+    font-weight: bold;
+    font-size: 18px;
+    text-align: center;
+    line-height: 34px;
+    width: 34px;
+    height: 34px;
+    text-decoration: none;
+    display: block;
+}
