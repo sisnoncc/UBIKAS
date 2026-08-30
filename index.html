@@ -34,12 +34,12 @@
         const SUPABASE_URL = "https://ejvtkxexhmslgktdugum.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_-_GvErnsf8F-sP1oik0pKA_Qum5SfKx";
 
-        // 3. Inicialización del cliente
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+       // 3. Inicialización del cliente (Cambiado el nombre de la variable a "supabaseClient")
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let usuarioActual = null;
 
         // 4. Comprobar el estado de autenticación
-        supabase.auth.onAuthStateChange((event, session) => {
+        supabaseClient.auth.onAuthStateChange((event, session) => {
             if (session) {
                 usuarioActual = session.user;
                 document.getElementById('btn-login').style.display = 'none';
@@ -58,7 +58,7 @@
 
         // 5. Funciones de Autenticación
         async function iniciarSesion() {
-            const { error } = await supabase.auth.signInWithOAuth({
+            const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'github',
                 options: {
                     redirectTo: window.location.origin 
@@ -66,20 +66,19 @@
             });
             if (error) console.error("Error al iniciar sesión:", error.message);
         }
-
-        async function cerrarSesion() {
-            await supabase.auth.signOut();
+       async function cerrarSesion() {
+            await supabaseClient.auth.signOut();
         }
 
-        // 6. Guardar datos en la base de datos (Optimizado para Supabase v2)
+        // 6. Guardar datos en la base de datos
         async function guardarDatos() {
             const texto = document.getElementById('input-datos').value;
             
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('datos_usuarios')
                 .upsert([
                     { user_id: usuarioActual.id, contenido: texto }
-                ]); // Supabase infiere el conflicto usando la clave primaria (user_id)
+                ]);
 
             if (error) {
                 alert("Error al guardar: " + error.message);
@@ -90,11 +89,11 @@
 
         // 7. Cargar datos del usuario
         async function cargarDatos() {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('datos_usuarios')
                 .select('contenido')
                 .eq('user_id', usuarioActual.id)
-                .maybeSingle(); // Usamos maybeSingle para evitar errores si la fila no existe aún
+                .maybeSingle();
 
             if (data) {
                 document.getElementById('input-datos').value = data.contenido;
