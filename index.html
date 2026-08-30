@@ -2,48 +2,140 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Web con Supabase y Código de Acceso</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>Mis Ubicaciones</title>
+
+    <!-- Enlace al manifiesto PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007BFF">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Control Geocoder CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     
+    <!-- Enlace a los estilos separados -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- SortableJS para Drag and Drop fluido en PC y Móviles -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js"></script>
+
     <!-- 1. Importar la librería de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <h1>Mi Aplicación Diaria</h1>
-    
-    <!-- SECCIÓN DE AUTENTICACIÓN (Paso 1 y 2) -->
-    <div id="auth-section">
+    <!-- ========================================== -->
+    <!-- SECCIÓN DE AUTENTICACIÓN (LOGIN / OTP)     -->
+    <!-- ========================================== -->
+    <div id="auth-container" style="max-width: 400px; margin: 50px auto; padding: 20px; text-align: center; font-family: sans-serif; border: 1px solid #ccc; border-radius: 8px; background: #fff;">
+        <h2>Acceso a Mis Ubicaciones</h2>
+        
+        <!-- Paso 1: Introducir correo -->
         <div id="step-email">
-            <h3>Iniciar Sesión / Registro</h3>
-            <p>Introduce tu correo electrónico para recibir un código de acceso:</p>
-            <input type="email" id="input-email" placeholder="tu@correo.com" style="padding: 5px; width: 250px;">
-            <br><br>
-            <button onclick="enviarCodigo()">Enviar Código</button>
+            <p style="font-size: 14px; color: #555;">Introduce tu correo para iniciar sesión o registrarte:</p>
+            <input type="email" id="input-email" placeholder="tu@correo.com" style="padding: 8px; width: 80%; margin-bottom: 10px;">
+            <br>
+            <button onclick="enviarCodigo()" style="padding: 8px 15px; background: #007BFF; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Enviar Código</button>
         </div>
 
+        <!-- Paso 2: Introducir código OTP de 6 dígitos -->
         <div id="step-otp" style="display:none;">
-            <h3>Verificar Código</h3>
-            <p>Introduce el código de 6 dígitos que hemos enviado a tu correo:</p>
-            <input type="text" id="input-otp" placeholder="123456" style="padding: 5px; width: 150px;">
-            <br><br>
-            <button onclick="verificarCodigo()">Confirmar Código</button>
+            <p style="font-size: 14px; color: #555;">Introduce el código de verificación enviado a tu correo:</p>
+            <input type="text" id="input-otp" placeholder="123456" style="padding: 8px; width: 60%; margin-bottom: 10px; text-align: center; font-size: 18px; letter-spacing: 2px;">
+            <br>
+            <button onclick="verificarCodigo()" style="padding: 8px 15px; background: #28a745; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Confirmar Código</button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- APLICACIÓN PRINCIPAL (Oculta hasta loguearse)-->
+    <!-- ========================================== -->
+    <div id="app-main-container" style="display:none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
+            <p id="user-email" style="font-size: 14px; color: #333; margin: 10px 0;"></p>
+            <button onclick="cerrarSesion()" style="padding: 5px 10px; background: #dc3545; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Cerrar Sesión</button>
         </div>
 
-        <button id="btn-logout" onclick="cerrarSesion()" style="display:none; margin-top: 10px;">Cerrar Sesión</button>
-        <p id="user-email" style="font-weight: bold; color: green;"></p>
+        <h1>Mis Ubicaciones</h1>
+        <p id="info-dispositivo">Cargando...</p>
+
+        <!-- Sección del Vídeo Explicativo -->
+        <div class="video-container" id="seccion-video">
+            <video controls autoplay muted playsinline poster="">
+                <source src="video-explicativo.mp4" type="video/mp4">
+                Tu navegador no soporta la reproducción de vídeos.
+            </video>
+        </div>
+
+        <!-- Botón personalizado para instalar la App en la pantalla de inicio -->
+        <button id="btn-instalar-app">📥 Añadir App a la Pantalla de Inicio</button>
+
+        <!-- Contenedor dinámico de accesos directos -->
+        <div class="button-container" id="contenedor-botones"></div>
+
+        <!-- Modal de Opciones del Botón Principal -->
+        <div id="modal-opciones" class="modal">
+            <div class="modal-content">
+                <h3 id="titulo-opciones-btn">Gestionar Botón</h3>
+                <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Selecciona una acción:</p>
+                <button class="btn-mod-ubicacion" onclick="ejecutarModificarUbicacion()">📍 Modificar Ubicación</button>
+                <button class="btn-mod-texto" onclick="ejecutarModificarTexto()">✏️ Modificar Texto</button>
+                <button class="btn-eliminar" onclick="ejecutarEliminar()">🗑️ Eliminar</button>
+                <button class="btn-cancelar-modal" onclick="cerrarModalOpciones()">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Modal de Configuración -->
+        <div id="modal-nombre" class="modal">
+            <div class="modal-content">
+                <h3 id="titulo-modal-config">Configurar Botón</h3>
+                
+                <label>Nombre de la etiqueta: *</label>
+                <input type="text" id="input-nombre-btn" placeholder="Ej. Casa" oninput="limpiarError(this)">
+                
+                <div id="contenedor-campos-extra">
+                    <label>Dirección aproximada (Opcional):</label>
+                    <input type="text" id="input-dir-aprox" placeholder="Ej. Calle Mayor 10" oninput="limpiarError(this)">
+                    
+                    <label>Pegar enlace Maps (Opcional):</label>
+                    <input type="text" id="input-link-gmaps" placeholder="Enlace de Maps" oninput="limpiarError(this)">
+                </div>
+
+                <button class="btn-guardar" onclick="procesarConfiguracion()">Guardar / Continuar</button>
+                <button class="btn-guardar btn-cerrar-config" onclick="cerrarModalConfig()">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Modal: Confirmar Ubicación desde el Mapa -->
+        <div id="modal-confirmar-pin" class="modal" style="z-index: 3000;">
+            <div class="modal-content">
+                <h3>📍 Añadir Ubicación</h3>
+                <p style="font-size: 13px; color: #666; margin-bottom: 15px;">¿Deseas guardar esta ubicación en tu botón?</p>
+                <button class="btn-guardar" onclick="guardarUbicacionDefinitiva()" style="margin-top: 0;">Sí, guardar</button>
+                <button class="btn-cancelar-modal" onclick="cerrarModalConfirmarPin()" style="margin-top: 10px;">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Mapa Interactivo -->
+        <div id="contenedor-mapa-modal">
+            <div class="map-box">
+                <div class="map-header">
+                    <span id="map-instructions">📌 Haz clic o mantén presionado en la chincheta para guardar</span>
+                    <button class="btn-cerrar-mapa" onclick="cerrarMapa()">✕ Cerrar</button>
+                </div>
+                <div id="map"></div>
+            </div>
+        </div>
     </div>
 
-    <!-- APLICACIÓN PRINCIPAL (Visible solo cuando está logueado) -->
-    <div id="app-section" style="display:none; margin-top: 20px;">
-        <h3>Tus Datos Guardados en la Nube:</h3>
-        <textarea id="input-datos" rows="4" cols="50" placeholder="Escribe algo aquí para guardarlo..."></textarea>
-        <br><br>
-        <button onclick="guardarDatos()">Guardar Datos</button>
-    </div>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Control Geocoder JS -->
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
+    <!-- Script de Autenticación de Supabase -->
     <script>
-        // 2. Credenciales de Supabase
         const SUPABASE_URL = "https://ejvtkxexhmslgktdugum.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_-_GvErnsf8F-sP1oik0pKA_Qum5SfKx";
 
@@ -51,14 +143,13 @@
         let usuarioActual = null;
         let correoPendiente = "";
 
-        // 3. Comprobar si ya hay una sesión activa al cargar la web
+        // Comprobar si ya hay una sesión activa al cargar la página
         db.auth.getSession().then(({ data: { session } }) => {
             if (session) {
-                gestionarSesionActiva(session.user);
+                activarApp(session.user);
             }
         });
 
-        // 4. Paso 1: Enviar código OTP al correo
         async function enviarCodigo() {
             correoPendiente = document.getElementById('input-email').value.trim();
             if (!correoPendiente) {
@@ -68,22 +159,18 @@
 
             const { error } = await db.auth.signInWithOtp({
                 email: correoPendiente,
-                options: {
-                    shouldCreateUser: true // Crea el usuario si es nuevo, o lo loguea si ya existe
-                }
+                options: { shouldCreateUser: true }
             });
 
             if (error) {
                 alert("Error al enviar el código: " + error.message);
             } else {
-                alert("¡Código enviado! Revisa tu bandeja de entrada (y spam).");
-                // Ocultar campo de email y mostrar campo para introducir el código
+                alert("¡Código enviado! Revisa tu bandeja de entrada o spam.");
                 document.getElementById('step-email').style.display = 'none';
                 document.getElementById('step-otp').style.display = 'block';
             }
         }
 
-        // 5. Paso 2: Verificar el código que escribió el usuario
         async function verificarCodigo() {
             const tokenCodigo = document.getElementById('input-otp').value.trim();
             if (!tokenCodigo) {
@@ -100,57 +187,30 @@
             if (error) {
                 alert("Código incorrecto o expirado: " + error.message);
             } else {
-                alert("¡Inicio de sesión exitoso!");
-                gestionarSesionActiva(data.user);
+                activarApp(data.user);
             }
         }
 
-        // Interfaz cuando el usuario está conectado
-        function gestionarSesionActiva(user) {
+        function activarApp(user) {
             usuarioActual = user;
-            document.getElementById('auth-section').style.display = 'block';
-            document.getElementById('step-email').style.display = 'none';
-            document.getElementById('step-otp').style.display = 'none';
-            document.getElementById('btn-logout').style.display = 'inline';
+            // Ocultar login y mostrar la app completa
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('app-main-container').style.display = 'block';
             document.getElementById('user-email').innerText = `Conectado como: ${user.email}`;
-            document.getElementById('app-section').style.display = 'block';
-            cargarDatos();
+
+            // Si tienes funciones de carga inicial en app.js que requieran el ID del usuario, se ejecutarán aquí
+            if (typeof inicializarAppSupabase === 'function') {
+                inicializarAppSupabase(user.id);
+            }
         }
 
         async function cerrarSesion() {
             await db.auth.signOut();
-            window.location.reload(); // Recarga la página para limpiar estados
-        }
-
-        // 6. Guardar datos en la base de datos de Supabase
-        async function guardarDatos() {
-            const texto = document.getElementById('input-datos').value;
-            
-            const { error } = await db
-                .from('datos_usuarios')
-                .upsert([
-                    { user_id: usuarioActual.id, contenido: texto }
-                ]);
-
-            if (error) {
-                alert("Error al guardar: " + error.message);
-            } else {
-                alert("¡Datos guardados con éxito en la nube!");
-            }
-        }
-
-        // 7. Cargar datos del usuario
-        async function cargarDatos() {
-            const { data, error } = await db
-                .from('datos_usuarios')
-                .select('contenido')
-                .eq('user_id', usuarioActual.id)
-                .maybeSingle();
-
-            if (data) {
-                document.getElementById('input-datos').value = data.contenido;
-            }
+            window.location.reload();
         }
     </script>
+
+    <!-- Enlace al script JS principal de tu aplicación -->
+    <script src="app.js"></script>
 </body>
 </html>
