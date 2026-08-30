@@ -34,12 +34,12 @@
         const SUPABASE_URL = "https://ejvtkxexhmslgktdugum.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_-_GvErnsf8F-sP1oik0pKA_Qum5SfKx";
 
-       // 3. Inicialización del cliente (Cambiado el nombre de la variable a "supabaseClient")
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // 3. Inicialización usando directamente el objeto global sin redeclarar
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let usuarioActual = null;
 
         // 4. Comprobar el estado de autenticación
-        supabaseClient.auth.onAuthStateChange((event, session) => {
+        db.auth.onAuthStateChange((event, session) => {
             if (session) {
                 usuarioActual = session.user;
                 document.getElementById('btn-login').style.display = 'none';
@@ -58,7 +58,7 @@
 
         // 5. Funciones de Autenticación
         async function iniciarSesion() {
-            const { error } = await supabaseClient.auth.signInWithOAuth({
+            const { error } = await db.auth.signInWithOAuth({
                 provider: 'github',
                 options: {
                     redirectTo: window.location.origin 
@@ -66,15 +66,16 @@
             });
             if (error) console.error("Error al iniciar sesión:", error.message);
         }
-       async function cerrarSesion() {
-            await supabaseClient.auth.signOut();
+
+        async function cerrarSesion() {
+            await db.auth.signOut();
         }
 
         // 6. Guardar datos en la base de datos
         async function guardarDatos() {
             const texto = document.getElementById('input-datos').value;
             
-            const { data, error } = await supabaseClient
+            const { data, error } = await db
                 .from('datos_usuarios')
                 .upsert([
                     { user_id: usuarioActual.id, contenido: texto }
@@ -89,7 +90,7 @@
 
         // 7. Cargar datos del usuario
         async function cargarDatos() {
-            const { data, error } = await supabaseClient
+            const { data, error } = await db
                 .from('datos_usuarios')
                 .select('contenido')
                 .eq('user_id', usuarioActual.id)
