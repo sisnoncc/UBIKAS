@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Web con Supabase y Anuncios</title>
     
-    <!-- 1. CORREGIDO: Importar correctamente la librería de Supabase desde un CDN válido -->
+    <!-- 1. Importar la librería de Supabase desde un CDN válido -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- AQUÍ PEGARÁS TU CÓDIGO DE GOOGLE ADSENSE EN EL FUTURO -->
@@ -30,15 +30,15 @@
     </div>
 
     <script>
-        // 2. CORREGIDO: La URL de Supabase NO debe llevar "/rest/v1/" al final
+        // 2. Credenciales de Supabase
         const SUPABASE_URL = "https://ejvtkxexhmslgktdugum.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_-_GvErnsf8F-sP1oik0pKA_Qum5SfKx";
 
-        // 3. CORREGIDO: Se elimina el símbolo "@" y se usa supabase.createClient correctamente
+        // 3. Inicialización del cliente
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let usuarioActual = null;
 
-        // 4. Comprobar si el usuario ya está logueado al cargar la página
+        // 4. Comprobar el estado de autenticación
         supabase.auth.onAuthStateChange((event, session) => {
             if (session) {
                 usuarioActual = session.user;
@@ -71,7 +71,7 @@
             await supabase.auth.signOut();
         }
 
-        // 6. Guardar datos del usuario en la base de datos
+        // 6. Guardar datos en la base de datos (Optimizado para Supabase v2)
         async function guardarDatos() {
             const texto = document.getElementById('input-datos').value;
             
@@ -79,7 +79,7 @@
                 .from('datos_usuarios')
                 .upsert([
                     { user_id: usuarioActual.id, contenido: texto }
-                ], { onConflict: 'user_id' }); // Sobrescribe si el usuario ya tiene un registro
+                ]); // Supabase infiere el conflicto usando la clave primaria (user_id)
 
             if (error) {
                 alert("Error al guardar: " + error.message);
@@ -88,13 +88,13 @@
             }
         }
 
-        // 7. Cargar datos del usuario desde la base de datos
+        // 7. Cargar datos del usuario
         async function cargarDatos() {
             const { data, error } = await supabase
                 .from('datos_usuarios')
                 .select('contenido')
                 .eq('user_id', usuarioActual.id)
-                .single();
+                .maybeSingle(); // Usamos maybeSingle para evitar errores si la fila no existe aún
 
             if (data) {
                 document.getElementById('input-datos').value = data.contenido;
