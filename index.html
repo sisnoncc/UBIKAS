@@ -20,18 +20,15 @@
     <!-- SortableJS para Drag and Drop fluido en PC y Móviles -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js"></script>
 
-    <!-- 1. Importar la librería de Supabase -->
+    <!-- Librería de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <!-- ========================================== -->
-    <!-- SECCIÓN DE AUTENTICACIÓN (LOGIN / OTP)     -->
-    <!-- ========================================== -->
+    <!-- Sección de Autenticación (Login / OTP) -->
     <div id="auth-container" style="max-width: 400px; margin: 50px auto; padding: 20px; text-align: center; font-family: sans-serif; border: 1px solid #ccc; border-radius: 8px; background: #fff;">
         <h2>Acceso a Mis Ubicaciones</h2>
         
-        <!-- Paso 1: Introducir correo -->
         <div id="step-email">
             <p style="font-size: 14px; color: #555;">Introduce tu correo para iniciar sesión o registrarte:</p>
             <input type="email" id="input-email" placeholder="tu@correo.com" style="padding: 8px; width: 80%; margin-bottom: 10px;">
@@ -39,7 +36,6 @@
             <button onclick="enviarCodigo()" style="padding: 8px 15px; background: #007BFF; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Enviar Código</button>
         </div>
 
-        <!-- Paso 2: Introducir código OTP de 6 dígitos -->
         <div id="step-otp" style="display:none;">
             <p style="font-size: 14px; color: #555;">Introduce el código de verificación enviado a tu correo:</p>
             <input type="text" id="input-otp" placeholder="123456" style="padding: 8px; width: 60%; margin-bottom: 10px; text-align: center; font-size: 18px; letter-spacing: 2px;">
@@ -48,11 +44,9 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- APLICACIÓN PRINCIPAL (Oculta hasta loguearse)-->
-    <!-- ========================================== -->
+    <!-- Aplicación Principal (Oculta hasta loguearse) -->
     <div id="app-main-container" style="display:none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px; max-width: 500px; margin: 0 auto;">
             <p id="user-email" style="font-size: 14px; color: #333; margin: 10px 0;"></p>
             <button onclick="cerrarSesion()" style="padding: 5px 10px; background: #dc3545; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Cerrar Sesión</button>
         </div>
@@ -140,10 +134,8 @@
         const SUPABASE_ANON_KEY = "sb_publishable_-_GvErnsf8F-sP1oik0pKA_Qum5SfKx";
 
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        let usuarioActual = null;
         let correoPendiente = "";
 
-        // Comprobar si ya hay una sesión activa al cargar la página
         db.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 activarApp(session.user);
@@ -192,13 +184,10 @@
         }
 
         function activarApp(user) {
-            usuarioActual = user;
-            // Ocultar login y mostrar la app completa
             document.getElementById('auth-container').style.display = 'none';
             document.getElementById('app-main-container').style.display = 'block';
             document.getElementById('user-email').innerText = `Conectado como: ${user.email}`;
 
-            // Si tienes funciones de carga inicial en app.js que requieran el ID del usuario, se ejecutarán aquí
             if (typeof inicializarAppSupabase === 'function') {
                 inicializarAppSupabase(user.id);
             }
@@ -210,7 +199,7 @@
         }
     </script>
 
-    <!-- Enlace al script JS principal de tu aplicación -->
+    <!-- Enlace al script JS principal -->
     <script src="app.js"></script>
 </body>
 </html>
