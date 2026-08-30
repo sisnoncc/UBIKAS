@@ -7,8 +7,8 @@ let coordenadaTemporal = null;
 let sortableInstance = null;
 let estaArrastrando = false;
 let deferredPrompt = null;
+let usuarioIdActual = null;
 
-// Registrar Service Worker para permitir Share Target (Google Maps / Waze)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
@@ -23,12 +23,9 @@ function obtenerDispositivo() {
     return "pc";
 }
 
-function obtenerTotalBotones() {
-    let total = localStorage.getItem("total_botones");
-    return total ? parseInt(total) : 1;
-}
-
-window.onload = function() {
+function inicializarAppSupabase(userId) {
+    usuarioIdActual = userId;
+    
     const infoDispositivo = document.getElementById("info-dispositivo");
     if (infoDispositivo) {
         infoDispositivo.innerText = "Dispositivo: " + obtenerDispositivo().toUpperCase();
@@ -37,20 +34,33 @@ window.onload = function() {
     procesarEnlaceCompartidoExterno();
     renderizarBotones();
     configurarInstalacionPWA();
-};
+}
 
-function procesarEnlaceCompartidoExterno() {
+async function obtenerTotalBotonesDB() {
+    let { count, error } = await db
+        .from('botones_ubicaciones')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', usuarioIdActual);
+
+    if (error) return 1;
+    return (count || 0) + 1;
+}
+
+async function procesarEnlaceCompartidoExterno() {
     const params = new URLSearchParams(window.location.search);
     const sharedUrl = params.get('url') || params.get('text');
 
-    if (sharedUrl) {
-        let total = obtenerTotalBotones();
+    if (sharedUrl && usuarioIdActual) {
         let dispositivo = obtenerDispositivo();
+        let total = await obtenerTotalBotonesDB();
 
-        localStorage.setItem("ubicacion_nav_btn_" + total, sharedUrl);
-        localStorage.setItem("ubicacion_" + dispositivo + "_btn_" + total, sharedUrl);
-        localStorage.setItem("nombre_btn_" + total, "Ubicación compartida");
-        localStorage.setItem("total_botones", total + 1);
+        await db.from('botones_ubicaciones').insert([{
+            user_id: usuarioIdActual,
+            orden: total,
+            nombre: "Ubicación compartida",
+            ubicacion_nav: sharedUrl,
+            ubicacion_local: sharedUrl
+        }]);
 
         window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -59,8 +69,6 @@ function procesarEnlaceCompartidoExterno() {
 function configurarInstalacionPWA() {
     const btnInstalar = document.getElementById('btn-instalar-app');
 
-    // Por defecto ocultamos el botón hasta que el navegador permita la instalación 
-    // o detectemos que no está en modo standalone.
     if (btnInstalar) {
         btnInstalar.style.display = 'none';
     }
@@ -70,11 +78,10 @@ function configurarInstalacionPWA() {
         return;
     }
 
-    // Escuchamos el evento automático del navegador
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        if (btnInstalar) btnInstalar.style.display = 'block'; // Mostrar solo cuando el navegador lo permita
+        if (btnInstalar) btnInstalar.style.display = 'block';
     });
 
     if (btnInstalar) {
@@ -88,35 +95,42 @@ function configurarInstalacionPWA() {
                 deferredPrompt = null;
                 btnInstalar.style.display = 'none';
             } else {
-                alert("Para instalar la app, toca los tres puntos (⋮) en la esquina superior derecha de tu navegador y selecciona 'Añadir a la pantalla de inicio' o 'Instalar aplicación'.");
+                alert("Para instalar la app, toca los tres puntos (⋮) en la esquina superior derecha de tu navegador y selecciona 'Añadir a la pantalla de inicio'.");
             }
         });
     }
 }
 
-function renderizarBotones() {
+async function renderizarBotones() {
     const contenedor = document.getElementById("contenedor-botones");
-    if (!contenedor) return;
+    if (!contenedor || !usuarioIdActual) return;
     contenedor.innerHTML = "";
-    let total = obtenerTotalBotones();
     let dispositivo = obtenerDispositivo();
 
-    for (let i = 1; i <= total; i++) {
-        let nombreGuardado = localStorage.getItem("nombre_btn_" + i);
-        let enlaceNav = localStorage.getItem("ubicacion_nav_btn_" + i);
-        let enlaceLocal = localStorage.getItem("ubicacion_" + dispositivo + "_btn_" + i);
-        
-        let textoEtiqueta = nombreGuardado ? nombreGuardado : "Nuevo";
+    let { data: botones, error } = await db
+        .from('botones_ubicaciones')
+        .select('*')
+        .eq('user_id', usuarioIdActual)
+        .order('orden', { ascending: true });
+
+    if (error) {
+        console.error("Error al cargar botones:", error);
+        return;
+    }
+
+    let totalVisual = (botones ? botones.length : 0) + 1;
+
+    for (let i = 0; i < botones.length; i++) {
+        let btnData = botones[i];
+        let idReal = btnData.id;
+        let textoEtiqueta = btnData.nombre || "Nuevo";
+        let enlaceNav = btnData.ubicacion_nav;
+        let enlaceLocal = dispositivo === "movil" ? btnData.ubicacion_local : btnData.ubicacion_nav;
         let estaConfigurado = (enlaceNav || enlaceLocal);
 
         let grupo = document.createElement("div");
         grupo.className = "item-group";
-        grupo.setAttribute("data-id", i);
-
-        if (!estaConfigurado) {
-            grupo.classList.add("no-sort");
-            grupo.setAttribute("data-fixed", "true");
-        }
+        grupo.setAttribute("data-id", idReal);
 
         let btn = document.createElement("button");
         btn.innerHTML = estaConfigurado ? "📍" : "+";
@@ -126,10 +140,10 @@ function renderizarBotones() {
             if (estaArrastrando) return;
 
             if (estaConfigurado) {
-                let enlace = localStorage.getItem("ubicacion_nav_btn_" + i) || localStorage.getItem("ubicacion_" + dispositivo + "_btn_" + i);
+                let enlace = enlaceNav || enlaceLocal;
                 if (enlace) window.open(enlace, "_blank");
             } else {
-                abrirModalConfiguracion(i, "completo");
+                abrirModalConfiguracion(idReal, "completo");
             }
         };
 
@@ -139,7 +153,7 @@ function renderizarBotones() {
             
             pressTimer = setTimeout(function() {
                 if (!estaArrastrando) {
-                    abrirModalOpciones(i, textoEtiqueta);
+                    abrirModalOpciones(idReal, textoEtiqueta);
                 }
             }, 800);
         };
@@ -168,6 +182,34 @@ function renderizarBotones() {
         contenedor.appendChild(grupo);
     }
 
+    // Botón fantasma final para añadir nuevo
+    let grupoVacio = document.createElement("div");
+    grupoVacio.className = "item-group no-sort";
+    grupoVacio.setAttribute("data-fixed", "true");
+
+    let btnVacio = document.createElement("button");
+    btnVacio.innerHTML = "+";
+    btnVacio.onclick = async function() {
+        if (estaArrastrando) return;
+        let { data, error } = await db.from('botones_ubicaciones').insert([{
+            user_id: usuarioIdActual,
+            orden: totalVisual,
+            nombre: ""
+        }]).select();
+
+        if (!error && data) {
+            abrirModalConfiguracion(data[0].id, "completo");
+        }
+    };
+
+    let pVacio = document.createElement("p");
+    pVacio.className = "label-text";
+    pVacio.innerText = "Nuevo";
+
+    grupoVacio.appendChild(btnVacio);
+    grupoVacio.appendChild(pVacio);
+    contenedor.appendChild(grupoVacio);
+
     inicializarSortable();
 }
 
@@ -188,17 +230,6 @@ function inicializarSortable() {
             setTimeout(() => {
                 estaArrastrando = false;
             }, 100);
-
-            const items = contenedor.children;
-            const ultimoItem = items[items.length - 1];
-            if (ultimoItem.getAttribute("data-fixed") !== "true") {
-                for (let k = 0; k < items.length; k++) {
-                    if (items[k].getAttribute("data-fixed") === "true") {
-                        contenedor.appendChild(items[k]);
-                        break;
-                    }
-                }
-            }
             guardarNuevoOrden();
         },
         onCancel: function(evt) {
@@ -207,42 +238,26 @@ function inicializarSortable() {
     });
 }
 
-function guardarNuevoOrden() {
+async function guardarNuevoOrden() {
     const contenedor = document.getElementById("contenedor-botones");
     const grupos = contenedor.getElementsByClassName("item-group");
-    let dispositivo = obtenerDispositivo();
 
-    let datosNuevos = [];
+    let promesas = [];
+    let ordenContador = 1;
+
     for (let g of grupos) {
-        let idAntiguo = g.getAttribute("data-id");
-        datosNuevos.push({
-            nombre: localStorage.getItem("nombre_btn_" + idAntiguo),
-            nav: localStorage.getItem("ubicacion_nav_btn_" + idAntiguo),
-            local: localStorage.getItem("ubicacion_" + dispositivo + "_btn_" + idAntiguo)
-        });
-    }
-
-    for (let i = 0; i < datosNuevos.length; i++) {
-        let nuevoIndex = i + 1;
-        if (datosNuevos[i].nombre !== null) {
-            localStorage.setItem("nombre_btn_" + nuevoIndex, datosNuevos[i].nombre);
-        } else {
-            localStorage.removeItem("nombre_btn_" + nuevoIndex);
-        }
-
-        if (datosNuevos[i].nav !== null) {
-            localStorage.setItem("ubicacion_nav_btn_" + nuevoIndex, datosNuevos[i].nav);
-        } else {
-            localStorage.removeItem("ubicacion_nav_btn_" + nuevoIndex);
-        }
-
-        if (datosNuevos[i].local !== null) {
-            localStorage.setItem("ubicacion_" + dispositivo + "_btn_" + nuevoIndex, datosNuevos[i].local);
-        } else {
-            localStorage.removeItem("ubicacion_" + dispositivo + "_btn_" + nuevoIndex);
+        let idBtn = g.getAttribute("data-id");
+        if (idBtn && g.getAttribute("data-fixed") !== "true") {
+            promesas.push(
+                db.from('botones_ubicaciones')
+                  .update({ orden: ordenContador })
+                  .eq('id', idBtn)
+            );
+            ordenContador++;
         }
     }
 
+    await Promise.all(promesas);
     renderizarBotones();
 }
 
@@ -267,43 +282,17 @@ function ejecutarModificarTexto() {
     abrirModalConfiguracion(botonSeleccionadoId, "solo-texto");
 }
 
-function ejecutarEliminar() {
+async function ejecutarEliminar() {
     let id = botonSeleccionadoId;
     cerrarModalOpciones();
 
     if (confirm("¿Estás seguro de que deseas eliminar este botón?")) {
-        let dispositivo = obtenerDispositivo();
-        
-        localStorage.removeItem("nombre_btn_" + id);
-        localStorage.removeItem("ubicacion_nav_btn_" + id);
-        localStorage.removeItem("ubicacion_" + dispositivo + "_btn_" + id);
-
-        let total = obtenerTotalBotones();
-        let contadorValidos = 1;
-
-        for (let i = 1; i <= total; i++) {
-            let nombre = localStorage.getItem("nombre_btn_" + i);
-            let enlace = localStorage.getItem("ubicacion_nav_btn_" + i) || localStorage.getItem("ubicacion_" + dispositivo + "_btn_" + i);
-            
-            if (nombre || enlace) {
-                if (i !== contadorValidos) {
-                    localStorage.setItem("nombre_btn_" + contadorValidos, localStorage.getItem("nombre_btn_" + i) || "");
-                    localStorage.setItem("ubicacion_nav_btn_" + contadorValidos, localStorage.getItem("ubicacion_nav_btn_" + i) || "");
-                    localStorage.setItem("ubicacion_" + dispositivo + "_" + contadorValidos, localStorage.getItem("ubicacion_" + dispositivo + "_btn_" + i) || "");
-                    
-                    localStorage.removeItem("nombre_btn_" + i);
-                    localStorage.removeItem("ubicacion_nav_btn_" + i);
-                    localStorage.removeItem("ubicacion_" + dispositivo + "_btn_" + i);
-                }
-                contadorValidos++;
-            }
-        }
-        localStorage.setItem("total_botones", contadorValidos);
+        await db.from('botones_ubicaciones').delete().eq('id', id);
         renderizarBotones();
     }
 }
 
-function abrirModalConfiguracion(id, modo) {
+async function abrirModalConfiguracion(id, modo) {
     botonSeleccionadoId = id;
     modoEdicionActual = modo;
 
@@ -313,7 +302,9 @@ function abrirModalConfiguracion(id, modo) {
     let contenedorExtra = document.getElementById("contenedor-campos-extra");
     let tituloModal = document.getElementById("titulo-modal-config");
 
-    inputNombre.value = localStorage.getItem("nombre_btn_" + id) || "";
+    let { data } = await db.from('botones_ubicaciones').select('nombre').eq('id', id).single();
+
+    inputNombre.value = data ? (data.nombre || "") : "";
     inputDirAprox.value = "";
     inputLinkMaps.value = "";
     inputNombre.classList.remove("input-error");
@@ -338,7 +329,7 @@ function limpiarError(elemento) {
     elemento.classList.remove("input-error");
 }
 
-function procesarConfiguracion() {
+async function procesarConfiguracion() {
     let inputNombre = document.getElementById("input-nombre-btn");
     let nombre = inputNombre.value.trim();
 
@@ -348,7 +339,7 @@ function procesarConfiguracion() {
     }
 
     let id = botonSeleccionadoId;
-    localStorage.setItem("nombre_btn_" + id, nombre);
+    await db.from('botones_ubicaciones').update({ nombre: nombre }).eq('id', id);
     cerrarModalConfig();
 
     if (modoEdicionActual === "solo-texto") {
@@ -362,14 +353,10 @@ function procesarConfiguracion() {
     let dirAprox = inputDirAprox.value.trim();
 
     if (linkMaps !== "") {
-        let dispositivo = obtenerDispositivo();
-        localStorage.setItem("ubicacion_" + dispositivo + "_btn_" + id, linkMaps);
-        localStorage.setItem("ubicacion_nav_btn_" + id, linkMaps);
-
-        let totalActual = obtenerTotalBotones();
-        if (parseInt(id) === totalActual) {
-            localStorage.setItem("total_botones", totalActual + 1);
-        }
+        await db.from('botones_ubicaciones').update({ 
+            ubicacion_nav: linkMaps,
+            ubicacion_local: linkMaps 
+        }).eq('id', id);
 
         renderizarBotones();
         return;
@@ -520,22 +507,18 @@ function colocarChinchetaProvisional(latlng) {
     }, 100);
 }
 
-function guardarUbicacionDefinitiva() {
+async function guardarUbicacionDefinitiva() {
     if (!coordenadaTemporal) return;
 
     let lat = coordenadaTemporal.lat;
     let lng = coordenadaTemporal.lng;
-    let dispositivo = obtenerDispositivo();
     let id = botonSeleccionadoId;
     let urlMaps = `https://maps.google.com/?q=${lat},${lng}`;
 
-    localStorage.setItem("ubicacion_" + dispositivo + "_btn_" + id, urlMaps);
-    localStorage.setItem("ubicacion_nav_btn_" + id, urlMaps);
-
-    let totalActual = obtenerTotalBotones();
-    if (parseInt(id) === totalActual) {
-        localStorage.setItem("total_botones", totalActual + 1);
-    }
+    await db.from('botones_ubicaciones').update({ 
+        ubicacion_nav: urlMaps,
+        ubicacion_local: urlMaps 
+    }).eq('id', id);
 
     document.getElementById("modal-confirmar-pin").style.display = "none";
     document.getElementById("contenedor-mapa-modal").style.display = "none";
