@@ -115,13 +115,15 @@ async function renderizarBotones() {
 
     if (error) {
         console.error("Error al cargar botones:", error);
-        return;
+        botones = []; // Evita que rompa si hay un error de red o tabla vacía
     }
 
-    let totalVisual = (botones ? botones.length : 0) + 1;
+    // Nos aseguramos de que sea un array válido
+    let listaBotones = botones || [];
+    let totalVisual = listaBotones.length + 1;
 
-    for (let i = 0; i < botones.length; i++) {
-        let btnData = botones[i];
+    for (let i = 0; i < listaBotones.length; i++) {
+        let btnData = listaBotones[i];
         let idReal = btnData.id;
         let textoEtiqueta = btnData.nombre || "Nuevo";
         let enlaceNav = btnData.ubicacion_nav;
@@ -182,7 +184,7 @@ async function renderizarBotones() {
         contenedor.appendChild(grupo);
     }
 
-    // Botón fantasma final para añadir nuevo
+    // Botón fantasma final para añadir nuevo (Siempre se dibuja)
     let grupoVacio = document.createElement("div");
     grupoVacio.className = "item-group no-sort";
     grupoVacio.setAttribute("data-fixed", "true");
@@ -199,6 +201,8 @@ async function renderizarBotones() {
 
         if (!error && data) {
             abrirModalConfiguracion(data[0].id, "completo");
+        } else {
+            console.error("Error al crear nuevo botón:", error);
         }
     };
 
